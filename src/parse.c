@@ -3,47 +3,52 @@
 #include <string.h>
 #include <unistd.h>
 
+/* IMPORTANT: include the header that DEFINES the structs.
+   Your project uses common.h for dbheader_t / employee_t. */
+#include "common.h"   /* provides struct dbheader_t, struct employee_t, STATUS_* */
+#include "file.h"     /* if your I/O helpers or struct fields live here, keep it */
 #include "parse.h"
-/* If you have common.h / file.h with the struct definitions and statuses,
-   include them above parse.h or here. The fallback STATUS_* in parse.h
-   prevents compile errors if they aren't included yet. */
-// #include "common.h"
-// #include "file.h"
 
+/* Create and zero-initialize a header. No fd parameter (matches tests). */
 int create_db_header(struct dbheader_t **headerOut)
 {
-    if (!headerOut) {
-        return STATUS_ERROR;
-    }
+    if (!headerOut) return STATUS_ERROR;
 
-    /* Zero-initialize the header; the real struct is defined elsewhere. */
+    /* Now sizeof works because common.h makes dbheader_t a complete type. */
     struct dbheader_t *hdr = (struct dbheader_t *)calloc(1, sizeof(struct dbheader_t));
     if (!hdr) {
         *headerOut = NULL;
         return STATUS_ERROR;
     }
 
-    /* TODO: set required magic/version/fields on hdr if your tests expect them.
-       e.g., hdr->magic = DB_MAGIC; hdr->version = 1; counts = 0; etc. */
+    /* TODO: If your tests expect magic/version/counts, set them here.
+       Example (adjust to your real struct):
+       hdr->magic = DB_MAGIC;
+       hdr->version = 1;
+       hdr->employee_count = 0;
+    */
 
     *headerOut = hdr;
     return STATUS_SUCCESS;
 }
 
+/* Return a value to satisfy -Wreturn-type even while this is a stub. */
 int validate_db_header(struct dbheader_t *dbhdr)
 {
-    /* TODO: perform real validation (magic, version, sizes, etc.). */
     (void)dbhdr;
-    return STATUS_SUCCESS; /* Ensure we always return something (fixes -Wreturn-type). */
+    /* TODO: Check hdr->magic, hdr->version, sizes, etc. */
+    return STATUS_SUCCESS;
 }
 
 void list_employees(struct dbheader_t *dbhdr, struct employee_t *employees)
 {
     (void)dbhdr;
     (void)employees;
-    /* TODO: iterate and print if needed */
+    /* TODO: iterate and print if required */
 }
 
+/* The tests reference add_employee; provide it (even as a stub) to avoid
+   implicit declaration warnings and allow step-by-step test progress. */
 int add_employee(struct dbheader_t *dbhdr,
                  struct employee_t **employees,
                  char *addstring)
@@ -52,8 +57,11 @@ int add_employee(struct dbheader_t *dbhdr,
     (void)employees;
     (void)addstring;
 
-    /* TODO: parse addstring, realloc *employees, append a new record,
-       and update counts in dbhdr. For step scaffolding we return success. */
+    /* TODO:
+       - Parse addstring into fields.
+       - realloc(*employees, new_count * sizeof(*employees));
+       - write new record; update counts in dbhdr.
+    */
     return STATUS_SUCCESS;
 }
 
@@ -65,7 +73,7 @@ int read_employees(int fd,
     (void)dbhdr;
     (void)employeesOut;
 
-    /* TODO: read records from fd, allocate array, set *employeesOut. */
+    /* TODO: read employees from fd into *employeesOut */
     return STATUS_SUCCESS;
 }
 
@@ -77,6 +85,6 @@ int output_file(int fd,
     (void)dbhdr;
     (void)employees;
 
-    /* TODO: write header + employees to fd. */
+    /* TODO: write header + employees to fd */
     return STATUS_SUCCESS;
 }
