@@ -9,12 +9,15 @@
 #include "common.h"
 #include "parse.h"
 
-int output_file(int fd, struct dbheader_t *dbhdr) {
+int output_file(int fd, struct dbheader_t *dbhdr, void *unused) {
+    (void)unused; // suppress unused param warning
+
     if(fd < 0){
         printf("Got a bad FD from the user\n");
         return STATUS_ERROR;
     }
 
+    // Convert to network byte order before writing
     dbhdr->magic = htonl(dbhdr->magic);
     dbhdr->filesize = htonl(dbhdr->filesize);
     dbhdr->count = htons(dbhdr->count);
@@ -43,6 +46,7 @@ int validate_db_header(int fd, struct dbheader_t **headerOut) {
         return STATUS_ERROR;
     }
 
+    // Convert from network to host byte order
     header->version = ntohs(header->version);
     header->count = ntohs(header->count);
     header->magic = ntohl(header->magic);
@@ -72,9 +76,7 @@ int validate_db_header(int fd, struct dbheader_t **headerOut) {
     return STATUS_SUCCESS;
 }
 
-int create_db_header(int fd, struct dbheader_t **headerOut) {
-    (void)fd; // unused param for now — silence compiler warning
-
+int create_db_header(struct dbheader_t **headerOut) {
     struct dbheader_t *header = calloc(1, sizeof(struct dbheader_t));
     if (header == NULL){
         printf("Malloc failed to create db header.\n");
@@ -87,6 +89,5 @@ int create_db_header(int fd, struct dbheader_t **headerOut) {
     header->filesize = sizeof(struct dbheader_t);
 
     *headerOut = header;
-
     return STATUS_SUCCESS;
 }
