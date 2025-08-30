@@ -9,6 +9,15 @@
 #include <ctype.h>
 #include "parse.h"
 
+static char *trim(char *s) {
+    while (isspace((unsigned char)*s)) s++;
+    if (*s == '\0') return s;
+    char *end = s + strlen(s) - 1;
+    while (end > s && isspace((unsigned char)*end)) end--;
+    end[1] = '\0';
+    return s;
+}
+
 void list_employees(struct dbheader_t *dbhdr, struct employee_t *employees) {
     if (!dbhdr) return;
     printf("Employees (count=%u)\n", (unsigned)dbhdr->count);
@@ -57,15 +66,6 @@ int create_db_header(struct dbheader_t **headerOut) {
     return 0;
 }
 
-static char *trim(char *s) {
-    while (isspace((unsigned char)*s)) s++;
-    if (*s == '\0') return s;
-    char *end = s + strlen(s) - 1;
-    while (end > s && isspace((unsigned char)*end)) end--;
-    end[1] = '\0';
-    return s;
-}
-
 int add_employee(struct dbheader_t *dbhdr,
                  struct employee_t **employeesOut,
                  char *addstring)
@@ -73,29 +73,42 @@ int add_employee(struct dbheader_t *dbhdr,
     if (!dbhdr || !employeesOut || !addstring) return -1;
     char *copy = strdup(addstring);
     if (!copy) return -1;
-    char *name  = strtok(copy, ",");
-    char *addr  = strtok(NULL, ",");
-    char *hours = strtok(NULL, ",");
-    if (!name || !addr || !hours) { free(copy); return -1; }
-    name  = trim(name);
-    addr  = trim(addr);
-    hours = trim(hours);
+
+    char *name = NULL, *addr = NULL, *hours = NULL;
+    char *p = copy;
+    char *first = strchr(p, ',');
+    if (!first) { free(copy); return -1; }
+    *first = '\0';
+    name = trim(p);
+    p = first + 1;
+    char *second = strchr(p, ',');
+    if (!second) { free(copy); return -1; }
+    *second = '\0';
+    addr = trim(p);
+    hours = trim(second + 1);
+
+    if (*name == '\0' || *addr == '\0' || *hours == '\0') { free(copy); return -1; }
+
     char *endp = NULL;
     unsigned long h = strtoul(hours, &endp, 10);
     if (endp == hours || *endp != '\0') { free(copy); return -1; }
+
     struct employee_t emp;
     memset(&emp, 0, sizeof(emp));
     strncpy(emp.name, name, sizeof(emp.name)-1);
     strncpy(emp.address, addr, sizeof(emp.address)-1);
     emp.hours = (unsigned)h;
+
     unsigned old = dbhdr->count;
     struct employee_t *arr = *employeesOut;
     struct employee_t *newarr = realloc(arr, (size_t)(old + 1) * sizeof(*newarr));
     if (!newarr) { free(copy); return -1; }
     newarr[old] = emp;
     *employeesOut = newarr;
+
     dbhdr->count += 1;
     dbhdr->filesize += (unsigned int)sizeof(struct employee_t);
+
     free(copy);
     return 0;
 }
@@ -105,6 +118,7 @@ int read_employees(int fd, struct dbheader_t *dbhdr, struct employee_t **employe
     if (!dbhdr || !employeesOut) return -1;
     unsigned count = dbhdr->count;
     if (count == 0) { *employeesOut = NULL; return 0; }
+    if (lseek(fd, (off_t)sizeof(struct dbheader_t), SEEK_SET) == (off_t)-1) return -1;
     struct employee_t *employees = calloc(count, sizeof(*employees));
     if (!employees) return -1;
     ssize_t need = (ssize_t)count * (ssize_t)sizeof(*employees);
